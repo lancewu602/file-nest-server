@@ -11,7 +11,7 @@
 
     <groupId>com.example</groupId>
     <artifactId>file-nest-server</artifactId>
-    <version>1.0.7</version>
+    <version>0.0.1</version>
 
     <name>File Nest Server</name>
     <description>File Nest Server</description>
