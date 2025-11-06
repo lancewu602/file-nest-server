@@ -1,0 +1,61 @@
+name: Build and Push Java Docker Image
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 检出代码到运行环境
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 设置 QEMU（支持跨平台模拟，如 arm64 在 amd64 runner 上构建）
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 启用 Buildx 支持多平台构建
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+          platforms: linux/amd64,linux/arm64
+
+      # 设置 JDK（自动缓存 Maven 依赖）
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'liberica'
+          cache: 'maven'
+
+      # Maven 打包
+      - name: Build Java application
+        run: mvn -B package -DskipTests
+
+      # 登录 Docker Hub（需提前配置 Secrets）
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}  # 推荐用 Access Token 而非密码
+
+      # 步骤3：自动生成镜像标签（可选，简化标签管理）
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: lancewu602/file-nest-server # 替换为你的 Docker Hub 用户名/仓库名
+          tags: |
+            type=semver,pattern={{version}}  # 语义化标签（如 v1.0.0 → 1.0.0）
+
+      # 步骤4：构建并推送 Docker 镜像
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .  # 构建上下文为项目根目录
+          push: true  # 推送镜像到 Docker Hub
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}  # 使用步骤3生成的标签

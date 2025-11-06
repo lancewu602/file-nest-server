@@ -1,0 +1,19 @@
+# 排除 Git 相关
+.git/
+.gitignore
+
+# 排除 GitHub Actions 配置
+.github/
+
+# 排除 IDE 配置文件
+.idea/
+
+# 排除测试目录（镜像内构建时已跳过测试，无需包含）
+src/test/
+
+# 排除 Node 依赖和构建缓存（镜像内会重新安装和构建）
+web/node_modules/
+web/dist/
+web/npm-debug.log
+web/yarn-debug.log
+web/yarn-error.log
