@@ -14,6 +14,8 @@ import com.google.common.cache.CacheBuilder;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
@@ -63,7 +65,9 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             .eq(User::getName, username)
         );
         Assert.notNull(user, "用户不存在");
-        Assert.isTrue(user.getPassword().equals(password), "密码错误");
+
+        PasswordEncoder encoder = Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
+        Assert.isTrue(encoder.matches(password, user.getPassword()), "密码错误");
 
         Map<String, Integer> payload = new HashMap<>();
         payload.put("userId", user.getId());
