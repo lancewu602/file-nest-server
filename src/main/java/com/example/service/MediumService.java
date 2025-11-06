@@ -33,13 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.CacheControl;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
@@ -87,61 +80,12 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
 
     private static Set<String> mediaTypes = Sets.newHashSet("image", "video");
 
-    private static final ThreadPoolExecutor MEDIA_EXECUTOR = new ThreadPoolExecutor(
+    private static ThreadPoolExecutor mediaExecutor = new ThreadPoolExecutor(
         10, 10, 1, TimeUnit.HOURS, new LinkedBlockingQueue<>(1000)
     );
 
     private static DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-    /**
-     * 获取媒体文件的二进制流
-     */
-    public ResponseEntity<Resource> display(Integer id, boolean thumbnail) {
-        Medium medium = getById(id);
-        if (medium == null) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-
-        // 1. 验证文件是否存在
-        String filePath = thumbnail ? medium.getThumbnailPath() : medium.getOriginalPath();
-        Path mediaPath = Paths.get(dataPath, filePath);
-        if (Files.notExists(mediaPath) || !Files.isRegularFile(mediaPath)) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-
-        try {
-            // 2. 获取文件的真实 MIME 类型（比硬编码更灵活）
-            String contentType = Files.probeContentType(mediaPath);
-
-            // 3. 如果无法识别 MIME 类型，根据扩展名兜底（可选）
-            String extension = FilenameUtils.getExtension(filePath).toLowerCase();
-            if (contentType == null) {
-                contentType = switch (extension) {
-                    case "mp4" -> "video/mp4";
-                    case "jpg", "jpeg" -> "image/jpeg";
-                    case "png" -> "image/png";
-                    case "gif" -> "image/gif";
-                    case "webp" -> "image/webp";
-                    default -> MediaType.APPLICATION_OCTET_STREAM_VALUE;
-                };
-            }
-
-            // 4. 封装文件资源
-            Resource resource = new FileSystemResource(mediaPath);
-
-            // 5. 设置响应头
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType(contentType));
-            headers.setCacheControl(CacheControl.noCache());
-
-            // 6. 返回响应
-            return new ResponseEntity<>(resource, headers, HttpStatus.OK);
-
-        } catch (Exception e) {
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
 
     public List<MediumsRow> listMediums(
         List<Integer> mediumIds, Boolean favorite, Boolean deleted, boolean groupByDate, int rowSize
@@ -402,7 +346,7 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
         log.info("上传成功：{}", mediaFilePath);
 
         // 后置任务（异步）
-        MEDIA_EXECUTOR.submit(() -> {
+        mediaExecutor.submit(() -> {
             if ("image".equals(type)) {
                 imagePostTask(medium, mediaFilePath, newImageName, currentUser.getName());
             }
@@ -470,7 +414,7 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
         Path newMediaFilePath = mediaDirectoryPath.resolve(newFileName);
 
         // 异步合并
-        MEDIA_EXECUTOR.submit(() -> {
+        mediaExecutor.submit(() -> {
             boolean success = uploadService.mergeChunks(
                 request.getFileId(), request.getChunkSize(), request.getTotalSize(), request.getTotalChunks(),
                 newMediaFilePath

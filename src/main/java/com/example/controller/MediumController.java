@@ -11,8 +11,6 @@ import com.example.bean.request.VideoMergeChunkRequest;
 import com.example.service.MediumService;
 import com.example.util.ThreadLocalUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.Resource;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,17 +30,6 @@ public class MediumController {
 
     @Autowired
     private MediumService mediumService;
-
-    /**
-     * 直接在浏览器中展示图片或视频
-     */
-    @GetMapping("/api/medium/display")
-    public ResponseEntity<Resource> display(
-        @RequestParam Integer mediaId,
-        @RequestParam(defaultValue = "true") Boolean thumbnail
-    ) {
-        return mediumService.display(mediaId, thumbnail);
-    }
 
     /**
      * 获取媒体列表

@@ -104,7 +104,7 @@ public class FileController {
     }
 
     @PostMapping("/api/file/upload/merge")
-    public Ret<?> uploadMerge(@RequestBody FileMergeChunkRequest request) throws IOException {
+    public Ret<?> uploadMerge(@RequestBody FileMergeChunkRequest request) {
         localStorageService.notifyMergeChunks(request);
         return Ret.success();
     }
