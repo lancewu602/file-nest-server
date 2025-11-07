@@ -11,7 +11,7 @@ public class AlbumResp {
 
     private Integer id;
     private String name;
-    private Integer coverMediaId;
+    private String coverPath;
     private Long mediaCount;
     private boolean system;
 

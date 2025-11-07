@@ -126,10 +126,13 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
             resp.setName(medium.getName());
             resp.setSize(medium.getSize());
             resp.setFavorite(medium.getFavorite());
-            resp.setThumbnailPath(medium.getThumbnailPath());
-            resp.setOriginalPath(medium.getOriginalPath());
             resp.setDateToken(dateTimeFormatter.format(medium.getDateToken()));
             resp.setLastModified(dateTimeFormatter.format(medium.getLastModified()));
+            resp.setThumbnailPath(medium.getThumbnailPath());
+            resp.setOriginalPath(medium.getOriginalPath());
+            resp.setWidth(medium.getWidth());
+            resp.setHeight(medium.getHeight());
+            resp.setDuration(medium.getDuration());
 
             mediums.add(resp);
 
@@ -160,10 +163,13 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
         resp.setName(medium.getName());
         resp.setSize(medium.getSize());
         resp.setFavorite(medium.getFavorite());
-        resp.setThumbnailPath(medium.getThumbnailPath());
-        resp.setOriginalPath(medium.getOriginalPath());
         resp.setDateToken(dateTimeFormatter.format(medium.getDateToken()));
         resp.setLastModified(dateTimeFormatter.format(medium.getLastModified()));
+        resp.setThumbnailPath(medium.getThumbnailPath());
+        resp.setOriginalPath(medium.getOriginalPath());
+        resp.setWidth(medium.getWidth());
+        resp.setHeight(medium.getHeight());
+        resp.setDuration(medium.getDuration());
 
         List<Integer> albumIds = albumMediumMappingMapper.selectList(
             new LambdaQueryWrapper<AlbumMediumMapping>()

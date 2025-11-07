@@ -83,7 +83,13 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
             AlbumResp resp = new AlbumResp();
             resp.setId(album.getId());
             resp.setName(album.getName());
-            resp.setCoverMediaId(album.getCoverMediumId());
+
+            Medium medium = mediumMapper.selectById(album.getCoverMediumId());
+            if (medium == null) {
+                resp.setCoverPath("");
+            } else {
+                resp.setCoverPath(medium.getThumbnailPath());
+            }
 
             if (countMedium) {
                 Long count = albumMediumMappingMapper.selectCount(new LambdaQueryWrapper<AlbumMediumMapping>()
@@ -155,7 +161,13 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
         AlbumResp resp = new AlbumResp();
         resp.setId(album.getId());
         resp.setName(album.getName());
-        resp.setCoverMediaId(album.getCoverMediumId());
+
+        Medium medium = mediumMapper.selectById(album.getCoverMediumId());
+        if (medium == null) {
+            resp.setCoverPath("");
+        } else {
+            resp.setCoverPath(medium.getThumbnailPath());
+        }
 
         if (countMedium) {
             Long count = albumMediumMappingMapper.selectCount(new LambdaQueryWrapper<AlbumMediumMapping>()

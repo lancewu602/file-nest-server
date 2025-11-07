@@ -31,8 +31,6 @@ public class LoginInterceptor implements HandlerInterceptor {
         User user = userService.verify(token);
         Assert.notNull(user, "用户不存在");
         ThreadLocalUtil.setUser(user);
-        log.info("request uri: {}", request.getRequestURI());
-        log.info("current userId:{} username：{}", user.getId(), user.getName());
         return true;
     }
 

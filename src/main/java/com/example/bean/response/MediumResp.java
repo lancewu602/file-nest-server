@@ -20,6 +20,9 @@ public class MediumResp {
     private String lastModified;
     private String thumbnailPath;
     private String originalPath;
+    private Integer width;
+    private Integer height;
+    private Integer duration;
     private List<Integer> inAlbumIds;
 
 }

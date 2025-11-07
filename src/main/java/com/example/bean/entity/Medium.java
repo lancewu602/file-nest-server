@@ -28,6 +28,9 @@ public class Medium {
     private String dhash;
     private String originalPath;
     private String thumbnailPath;
+    private Integer width;
+    private Integer height;
+    private Integer duration;
     private Boolean deleted;
     private Boolean favorite;
     private LocalDateTime updatedAt;
