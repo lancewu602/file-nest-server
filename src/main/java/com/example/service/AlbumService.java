@@ -164,6 +164,16 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
 
         Medium medium = mediumMapper.selectById(album.getCoverMediumId());
         if (medium == null) {
+            AlbumMediumMapping mapping = albumMediumMappingMapper.selectOne(
+                new LambdaQueryWrapper<AlbumMediumMapping>()
+                    .eq(AlbumMediumMapping::getAlbumId, album.getId())
+                    .orderByAsc(AlbumMediumMapping::getId)
+            );
+            if (mapping != null) {
+                medium = mediumMapper.selectById(mapping.getMediumId());
+            }
+        }
+        if (medium == null) {
             resp.setCoverPath("");
         } else {
             resp.setCoverPath(medium.getThumbnailPath());
