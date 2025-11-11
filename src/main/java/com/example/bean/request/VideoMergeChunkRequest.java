@@ -11,10 +11,14 @@ public class VideoMergeChunkRequest {
 
     private String fileId;
     private String fileName;
-    private Long dateToken;
-    private Long lastModified;
     private Long chunkSize;
     private Long totalSize;
     private Integer totalChunks;
+
+    private Long dateToken;
+    private Long lastModified;
+    private Integer width;
+    private Integer height;
+    private Integer duration;
 
 }

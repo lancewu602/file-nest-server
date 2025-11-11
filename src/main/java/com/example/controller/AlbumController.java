@@ -2,6 +2,7 @@ package com.example.controller;
 
 import com.example.bean.Ret;
 import com.example.bean.request.AlbumMediumRelationRequest;
+import com.example.bean.request.CreateAlbumRequest;
 import com.example.bean.request.DeleteAlbumRequest;
 import com.example.bean.request.EditAlbumRequest;
 import com.example.bean.request.SetAlbumCoverRequest;
@@ -68,10 +69,7 @@ public class AlbumController {
      */
     @PostMapping("/api/album/add-medium")
     public Ret<?> addMediumToAlbums(@RequestBody AlbumMediumRelationRequest request) {
-        albumService.addMediumToAlbums(
-            request.getAlbumIds(), request.getMediumIds(), request.getRemoveDeletedFlag(),
-            request.getOverrideAlbums()
-        );
+        albumService.addMediumToAlbums(request.getAlbumIds(), request.getMediumIds());
         return Ret.success();
     }
 
@@ -85,11 +83,20 @@ public class AlbumController {
     }
 
     /**
+     * 创建相册
+     */
+    @PostMapping("/api/album/create")
+    public Ret<?> create(@RequestBody CreateAlbumRequest request) {
+        albumService.create(request);
+        return Ret.success();
+    }
+
+    /**
      * 编辑相册
      */
     @PostMapping("/api/album/edit")
     public Ret<?> edit(@RequestBody EditAlbumRequest request) {
-        albumService.edit(request.getId(), request.getName());
+        albumService.edit(request);
         return Ret.success();
     }
 
@@ -98,7 +105,7 @@ public class AlbumController {
      */
     @PostMapping("/api/album/delete")
     public Ret<?> deleteAlbum(@RequestBody DeleteAlbumRequest request) {
-        albumService.deleteAlbum(request.getId());
+        albumService.delete(request.getId());
         return Ret.success();
     }
 

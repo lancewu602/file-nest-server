@@ -6,10 +6,12 @@ import java.util.List;
 
 /**
  * @author WuQinglong
- * @date 2025/11/3 18:04
+ * @date 2025/11/8 23:23
  */
 @Data
-public class AlbumMediumRelationRequest {
+public class ResetMediumAlbumRequest {
+
+    private Integer mediumId;
+
     private List<Integer> albumIds;
-    private List<Integer> mediumIds;
 }

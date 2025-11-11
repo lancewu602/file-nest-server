@@ -1,4 +1,4 @@
-FROM bellsoft/liberica-openjdk-debian:17
+FROM bellsoft/liberica-openjdk-alpine:17
 
 # 设置工作目录
 WORKDIR /app

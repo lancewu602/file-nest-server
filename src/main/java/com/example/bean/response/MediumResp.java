@@ -15,14 +15,17 @@ public class MediumResp {
     private String type;
     private String name;
     private Long size;
-    private Boolean favorite;
-    private String dateToken;
-    private String lastModified;
-    private String thumbnailPath;
-    private String originalPath;
     private Integer width;
     private Integer height;
     private Integer duration;
+    private String tokenDate;
+    private String tokenDateTime;
+    private String lastModified;
+    private String thumbnailPath;
+    private String originalPath;
+    private String durationText;
+    private Boolean favorite;
+    private Boolean deleted;
     private List<Integer> inAlbumIds;
 
 }

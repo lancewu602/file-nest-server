@@ -7,6 +7,8 @@ import com.example.bean.request.CheckChunkRequest;
 import com.example.bean.request.DeleteMediumRequest;
 import com.example.bean.request.MediumFavoriteRequest;
 import com.example.bean.request.MergeResultRequest;
+import com.example.bean.request.ResetMediumAlbumRequest;
+import com.example.bean.request.RestoreMediumRequest;
 import com.example.bean.request.VideoMergeChunkRequest;
 import com.example.service.MediumService;
 import com.example.util.ThreadLocalUtil;
@@ -36,10 +38,11 @@ public class MediumController {
      */
     @GetMapping("/api/medium/list")
     public Ret<?> listMediums(
-        @RequestParam(required = false, defaultValue = "4") int rowSize
+        @RequestParam(required = false, defaultValue = "1") int pageNum,
+        @RequestParam(required = false, defaultValue = "10") int pageSize
     ) {
         return Ret.success(
-            mediumService.listMediums(null, null, false, true, rowSize)
+            mediumService.listMediums(null, null, false, pageNum, pageSize)
         );
     }
 
@@ -49,10 +52,11 @@ public class MediumController {
     @GetMapping("/api/medium/album")
     public Ret<?> listAlbumMediums(
         @RequestParam Integer albumId,
-        @RequestParam(required = false, defaultValue = "4") int rowSize
+        @RequestParam(required = false, defaultValue = "1") int pageNum,
+        @RequestParam(required = false, defaultValue = "10") int pageSize
     ) {
         return Ret.success(
-            mediumService.listAlbumMediums(albumId, rowSize)
+            mediumService.listAlbumMediums(albumId, pageNum, pageSize)
         );
     }
 
@@ -69,11 +73,29 @@ public class MediumController {
     }
 
     /**
+     * 重置媒体文件的相册
+     */
+    @PostMapping("/api/medium/reset-album")
+    public Ret<?> resetMediumAlbums(@RequestBody ResetMediumAlbumRequest request) {
+        mediumService.resetMediumAlbums(request.getMediumId(), request.getAlbumIds());
+        return Ret.success();
+    }
+
+    /**
      * 删除媒体文件
      */
     @PostMapping("/api/medium/delete")
     public Ret<?> deleteMediums(@RequestBody DeleteMediumRequest request) {
         mediumService.deleteMediums(request);
+        return Ret.success();
+    }
+
+    /**
+     * 恢复媒体文件
+     */
+    @PostMapping("/api/medium/restore")
+    public Ret<?> restoreMediums(@RequestBody RestoreMediumRequest request) {
+        mediumService.restoreMediums(request.getMediumIds());
         return Ret.success();
     }
 
@@ -126,10 +148,14 @@ public class MediumController {
         @RequestParam String fileName,
         @RequestParam Long dateToken,
         @RequestParam Long lastModified,
-        @RequestParam Integer isFavorite,
+        @RequestParam Integer favorite,
+        @RequestParam Integer width,
+        @RequestParam Integer height,
+        @RequestParam Integer duration,
         @RequestPart("file") MultipartFile multipartFile
     ) throws IOException {
-        mediumService.uploadDirect(type, fileName, dateToken, lastModified, isFavorite, multipartFile);
+        mediumService.uploadDirect(type, fileName, dateToken, lastModified, favorite,
+            width, height, duration, multipartFile);
         return Ret.success();
     }
 

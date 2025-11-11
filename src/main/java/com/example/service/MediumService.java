@@ -2,6 +2,7 @@ package com.example.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.bean.Constants;
 import com.example.bean.entity.Album;
@@ -13,7 +14,6 @@ import com.example.bean.request.CheckChunkRequest;
 import com.example.bean.request.DeleteMediumRequest;
 import com.example.bean.request.VideoMergeChunkRequest;
 import com.example.bean.response.MediumResp;
-import com.example.bean.response.MediumsRow;
 import com.example.bean.response.MergeResultResp;
 import com.example.config.BizException;
 import com.example.mapper.AlbumMapper;
@@ -55,6 +55,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import static com.example.util.TimeFormatter.formatTimeToHMS;
+
 /**
  * @author WuQinglong
  * @date 2025/10/28 15:29
@@ -74,6 +76,8 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
     private AlbumMapper albumMapper;
     @Autowired
     private AlbumMediumMappingMapper albumMediumMappingMapper;
+    @Autowired
+    private PhotoService photoService;
 
     private static final String LIBRARY = "library"; // 原始文件
     private static final String THUMBS = "thumbs"; // 文件缩略图
@@ -87,116 +91,55 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
     private static DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    public List<MediumsRow> listMediums(
-        List<Integer> mediumIds, Boolean favorite, Boolean deleted, boolean groupByDate, int rowSize
+    public List<MediumResp> listMediums(
+        List<Integer> mediumIds, Boolean favorite, Boolean deleted, Integer pageNum, Integer pageSize
     ) {
         User currentUser = ThreadLocalUtil.getCurrentUser();
-        List<Medium> media = list(new LambdaQueryWrapper<Medium>()
+
+        Page<Medium> page = Page.of(pageNum, pageSize);
+        List<Medium> list = list(page, new LambdaQueryWrapper<Medium>()
             .eq(Medium::getUserId, currentUser.getId())
             .in(CollectionUtils.isNotEmpty(mediumIds), Medium::getId, mediumIds)
             .eq(favorite != null, Medium::getFavorite, favorite)
-            .eq(Medium::getDeleted, deleted != null && deleted) // 默认查找未删除的
+            .eq(Medium::getDeleted, deleted != null && deleted)
             .orderByDesc(Medium::getDateToken)
         );
 
-        List<MediumsRow> mediumsRows = new ArrayList<>();
         List<MediumResp> mediums = new ArrayList<>();
-        String currentTitle = "";
-        for (Medium medium : media) {
-            String title = medium.getDateToken().toLocalDate().format(dateFormatter);
-            if (groupByDate && !Objects.equals(currentTitle, title)) {
-
-                if (!mediums.isEmpty()) {
-                    for (int i = mediums.size(); i < rowSize; i++) {
-                        mediums.add(null);
-                    }
-                    mediumsRows.add(MediumsRow.of(mediums));
-                    mediums = new ArrayList<>();
-                }
-
-                // 添加一个日期行
-                mediumsRows.add(MediumsRow.of(title));
-
-                currentTitle = title;
-            }
-
+        for (Medium medium : list) {
             MediumResp resp = new MediumResp();
             resp.setId(medium.getId());
             resp.setType(medium.getType());
-            resp.setName(medium.getName());
-            resp.setSize(medium.getSize());
-            resp.setFavorite(medium.getFavorite());
-            resp.setDateToken(dateTimeFormatter.format(medium.getDateToken()));
+            resp.setTokenDate(dateFormatter.format(medium.getDateToken()));
+            resp.setTokenDateTime(dateTimeFormatter.format(medium.getDateToken()));
             resp.setLastModified(dateTimeFormatter.format(medium.getLastModified()));
             resp.setThumbnailPath(medium.getThumbnailPath());
-            resp.setOriginalPath(medium.getOriginalPath());
-            resp.setWidth(medium.getWidth());
-            resp.setHeight(medium.getHeight());
-            resp.setDuration(medium.getDuration());
-
+            if (Objects.equals(medium.getType(), "video")) {
+                resp.setDurationText(formatTimeToHMS(medium.getDuration()));
+            }
             mediums.add(resp);
-
-            if (mediums.size() == rowSize) {
-                mediumsRows.add(MediumsRow.of(mediums));
-                mediums = new ArrayList<>();
-            }
         }
 
-        if (!mediums.isEmpty()) {
-            for (int i = mediums.size(); i < rowSize; i++) {
-                mediums.add(null);
-            }
-            mediumsRows.add(MediumsRow.of(mediums));
-        }
-
-        return mediumsRows;
+        return mediums;
     }
 
-    public MediumResp mediumInfo(Integer mediumId) {
-        User currentUser = ThreadLocalUtil.getCurrentUser();
-        Medium medium = getById(mediumId);
-        Assert.isTrue(medium != null && medium.getUserId().equals(currentUser.getId()), "媒体不存在");
-
-        MediumResp resp = new MediumResp();
-        resp.setId(medium.getId());
-        resp.setType(medium.getType());
-        resp.setName(medium.getName());
-        resp.setSize(medium.getSize());
-        resp.setFavorite(medium.getFavorite());
-        resp.setDateToken(dateTimeFormatter.format(medium.getDateToken()));
-        resp.setLastModified(dateTimeFormatter.format(medium.getLastModified()));
-        resp.setThumbnailPath(medium.getThumbnailPath());
-        resp.setOriginalPath(medium.getOriginalPath());
-        resp.setWidth(medium.getWidth());
-        resp.setHeight(medium.getHeight());
-        resp.setDuration(medium.getDuration());
-
-        List<Integer> albumIds = albumMediumMappingMapper.selectList(
-            new LambdaQueryWrapper<AlbumMediumMapping>()
-                .eq(AlbumMediumMapping::getMediumId, mediumId)
-        ).stream().map(AlbumMediumMapping::getAlbumId).distinct().toList();
-        resp.setInAlbumIds(albumIds);
-
-        return resp;
-    }
-
-    public List<MediumsRow> listAlbumMediums(Integer albumId, Integer rowSize) {
+    public List<MediumResp> listAlbumMediums(Integer albumId, Integer pageNum, Integer pageSize) {
         Assert.notNull(albumId, "相册ID不能为空");
         User currentUser = ThreadLocalUtil.getCurrentUser();
 
         // 最近上传
         if (Objects.equals(albumId, Constants.RECENTLY_ALBUM_ID)) {
-            return listMediums(null, null, false, false, rowSize);
+            return listMediums(null, null, false, pageNum, pageSize);
         }
 
         // 我的收藏
         if (Objects.equals(albumId, Constants.FAVORITE_ALBUM_ID)) {
-            return listMediums(null, true, false, false, rowSize);
+            return listMediums(null, true, false, pageNum, pageSize);
         }
 
         // 最近删除
         if (Objects.equals(albumId, Constants.DELETED_ALBUM_ID)) {
-            return listMediums(null, null, true, false, rowSize);
+            return listMediums(null, null, true, pageNum, pageSize);
         }
 
         // 自定义相册
@@ -214,7 +157,63 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
             return Collections.emptyList();
         }
 
-        return listMediums(mediumIds, null, null, false, rowSize);
+        return listMediums(mediumIds, null, false, pageNum, pageSize);
+    }
+
+    public MediumResp mediumInfo(Integer mediumId) {
+        User currentUser = ThreadLocalUtil.getCurrentUser();
+        Medium medium = getById(mediumId);
+        Assert.isTrue(medium != null && medium.getUserId().equals(currentUser.getId()), "媒体不存在");
+
+        MediumResp resp = new MediumResp();
+        resp.setId(medium.getId());
+        resp.setType(medium.getType());
+        resp.setName(medium.getName());
+        resp.setSize(medium.getSize());
+        resp.setTokenDateTime(dateTimeFormatter.format(medium.getDateToken()));
+        resp.setLastModified(dateTimeFormatter.format(medium.getLastModified()));
+        resp.setThumbnailPath(medium.getThumbnailPath());
+        resp.setOriginalPath(medium.getOriginalPath());
+        resp.setWidth(medium.getWidth());
+        resp.setHeight(medium.getHeight());
+        resp.setDuration(medium.getDuration());
+        resp.setFavorite(medium.getFavorite());
+        resp.setDeleted(medium.getDeleted());
+
+        List<Integer> albumIds = albumMediumMappingMapper.selectList(
+            new LambdaQueryWrapper<AlbumMediumMapping>()
+                .eq(AlbumMediumMapping::getMediumId, mediumId)
+        ).stream().map(AlbumMediumMapping::getAlbumId).distinct().toList();
+        resp.setInAlbumIds(albumIds);
+
+        return resp;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void resetMediumAlbums(Integer mediumId, List<Integer> albumIds) {
+        Assert.notNull(mediumId, "媒体ID不能为空");
+        Assert.notEmpty(albumIds, "请选择相册");
+
+        Medium medium = getById(mediumId);
+        Assert.notNull(medium, "媒体不存在");
+
+        // 删除所有的关联关系
+        albumMediumMappingMapper.delete(new LambdaQueryWrapper<AlbumMediumMapping>()
+            .eq(AlbumMediumMapping::getMediumId, mediumId)
+        );
+
+        // 新增关联关系
+        for (Integer albumId : albumIds) {
+            Album album = albumMapper.selectById(albumId);
+            Assert.notNull(album, "相册不存在");
+
+            AlbumMediumMapping mapping = new AlbumMediumMapping();
+            mapping.setAlbumId(albumId);
+            mapping.setMediumId(mediumId);
+            albumMediumMappingMapper.insert(mapping);
+
+            photoService.refreshAlbumCover(album);
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -244,6 +243,13 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
         // 删除相册的关联关系
         albumMediumMappingMapper.delete(new LambdaQueryWrapper<AlbumMediumMapping>()
             .in(AlbumMediumMapping::getMediumId, mediumIds)
+        );
+    }
+
+    public void restoreMediums(List<Integer> mediumIds) {
+        update(new LambdaUpdateWrapper<Medium>()
+            .in(Medium::getId, mediumIds)
+            .set(Medium::getDeleted, false)
         );
     }
 
@@ -300,14 +306,9 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
         // TODO 删除对应的文件（先移动到某个目录下，再进行后台删除）
     }
 
-    /**
-     * 上传图片
-     * @param imageName 图片名称
-     * @param multipartFile 图片文件
-     */
     public void uploadDirect(
-        String type, String imageName, Long dateToken, Long lastModified, Integer isFavorite,
-        MultipartFile multipartFile
+        String type, String imageName, Long dateToken, Long lastModified, Integer favorite,
+        Integer width, Integer height, Integer duration, MultipartFile multipartFile
     ) throws IOException {
         Assert.isTrue(mediaTypes.contains(type), "只允许上传图片和视频");
         Assert.hasLength(imageName, "名称不能为空");
@@ -322,13 +323,16 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
         medium.setType(type);
         medium.setName(imageName);
         medium.setSize(multipartFile.getSize());
+        medium.setWidth(width);
+        medium.setHeight(height);
+        medium.setDuration(duration);
         medium.setDateToken(
             LocalDateTime.ofInstant(Instant.ofEpochMilli(dateToken), ZoneId.systemDefault())
         );
         medium.setLastModified(
             LocalDateTime.ofInstant(Instant.ofEpochSecond(lastModified), ZoneId.systemDefault())
         );
-        medium.setFavorite(isFavorite != null && isFavorite == 1);
+        medium.setFavorite(favorite != null && favorite == 1);
         save(medium);
 
         // 找到存储目录
@@ -399,6 +403,9 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
         medium.setName(request.getFileName());
         medium.setType("video");
         medium.setSize(request.getTotalSize());
+        medium.setWidth(request.getWidth());
+        medium.setHeight(request.getHeight());
+        medium.setDuration(request.getDuration());
         medium.setDateToken(
             LocalDateTime.ofInstant(Instant.ofEpochSecond(dateToken), ZoneId.systemDefault())
         );
@@ -448,9 +455,6 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
         try {
             // 1、提取 exif 信息
             ExifInfo exifInfo = ExifUtil.extract(mediaFilePath);
-            if (exifInfo != null) {
-                System.out.println(medium.getName() + ": " + exifInfo.getFileModificationDateTime());
-            }
 
             // 2、计算 dhash 和 phash
             String dhash = "";

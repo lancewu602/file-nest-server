@@ -8,6 +8,8 @@ import com.example.bean.entity.Album;
 import com.example.bean.entity.AlbumMediumMapping;
 import com.example.bean.entity.Medium;
 import com.example.bean.entity.User;
+import com.example.bean.request.CreateAlbumRequest;
+import com.example.bean.request.EditAlbumRequest;
 import com.example.bean.response.AlbumResp;
 import com.example.mapper.AlbumMapper;
 import com.example.mapper.AlbumMediumMappingMapper;
@@ -38,15 +40,14 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
     private AlbumMediumMappingMapper albumMediumMappingMapper;
     @Autowired
     private MediumMapper mediumMapper;
+    @Autowired
+    private PhotoService photoService;
 
     public List<AlbumResp> listAlbums(Boolean countMedium, boolean excludeSystem) {
         User currentUser = ThreadLocalUtil.getCurrentUser();
-
         List<Album> albums = list(new LambdaQueryWrapper<Album>()
             .eq(Album::getUserId, currentUser.getId())
         );
-
-        // 固定追加两个系统相册：最近上传、我的收藏
 
         List<AlbumResp> list = new ArrayList<>();
         if (!excludeSystem) {
@@ -60,7 +61,18 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
                     .eq(Medium::getDeleted, false)
                 ));
             }
-
+            // 查询最后一个上传的媒体缩略图
+            Medium coverMedium = mediumMapper.selectOne(new LambdaQueryWrapper<Medium>()
+                .eq(Medium::getUserId, currentUser.getId())
+                .eq(Medium::getDeleted, false)
+                .orderByDesc(Medium::getCreatedAt)
+                .last("limit 1")
+            );
+            if (coverMedium == null) {
+                resp.setCoverPath("");
+            } else {
+                resp.setCoverPath(coverMedium.getThumbnailPath());
+            }
             resp.setSystem(true);
             list.add(resp);
 
@@ -74,6 +86,18 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
                     .eq(Medium::getDeleted, false)
                     .eq(Medium::getFavorite, true)
                 ));
+            }
+            coverMedium = mediumMapper.selectOne(new LambdaQueryWrapper<Medium>()
+                .eq(Medium::getUserId, currentUser.getId())
+                .eq(Medium::getDeleted, false)
+                .eq(Medium::getFavorite, true)
+                .orderByDesc(Medium::getCreatedAt)
+                .last("limit 1")
+            );
+            if (coverMedium == null) {
+                resp.setCoverPath("");
+            } else {
+                resp.setCoverPath(coverMedium.getThumbnailPath());
             }
             resp.setSystem(true);
             list.add(resp);
@@ -156,23 +180,13 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
 
         // 自定义相册
         Album album = getById(albumId);
-        Assert.isTrue(album != null && album.getUserId().equals(currentUser.getId()), "相册不存在");
+        Assert.notNull(album, "相册不存在");
 
         AlbumResp resp = new AlbumResp();
         resp.setId(album.getId());
         resp.setName(album.getName());
 
         Medium medium = mediumMapper.selectById(album.getCoverMediumId());
-        if (medium == null) {
-            AlbumMediumMapping mapping = albumMediumMappingMapper.selectOne(
-                new LambdaQueryWrapper<AlbumMediumMapping>()
-                    .eq(AlbumMediumMapping::getAlbumId, album.getId())
-                    .orderByAsc(AlbumMediumMapping::getId)
-            );
-            if (mapping != null) {
-                medium = mediumMapper.selectById(mapping.getMediumId());
-            }
-        }
         if (medium == null) {
             resp.setCoverPath("");
         } else {
@@ -193,12 +207,12 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
         Assert.notNull(albumId, "相册ID不能为空");
         Assert.notNull(mediumId, "媒体ID不能为空");
 
-        User currentUser = ThreadLocalUtil.getCurrentUser();
         Album album = getById(albumId);
-        Assert.isTrue(album != null && album.getUserId().equals(currentUser.getId()), "相册不存在");
+        Assert.notNull(album, "相册不存在");
 
         Medium medium = mediumMapper.selectById(mediumId);
-        Assert.isTrue(medium != null && medium.getUserId().equals(currentUser.getId()), "媒体不存在");
+        Assert.notNull(medium, "媒体文件不存在");
+        Assert.isTrue(medium.getDeleted().equals(false), "媒体已删除");
 
         update(new LambdaUpdateWrapper<Album>()
             .eq(Album::getId, albumId)
@@ -210,124 +224,102 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
      * 添加照片到相册
      */
     @Transactional(rollbackFor = Exception.class)
-    public void addMediumToAlbums(List<Integer> albumIds, List<Integer> mediumIds, Boolean removeDeletedFlag,
-        Boolean overrideAlbums) {
+    public void addMediumToAlbums(List<Integer> albumIds, List<Integer> mediumIds) {
         Assert.notEmpty(albumIds, "请选择相册");
         Assert.notEmpty(mediumIds, "请选择照片");
 
         for (Integer albumId : albumIds) {
             Album album = getById(albumId);
-            if (album == null) {
-                continue;
-            }
+            Assert.notNull(album, "相册不存在");
 
-            // 查询相册已关联的照片
+            // 查询相册已关联的媒体文件
             List<Integer> existMediumIds = albumMediumMappingMapper.selectList(
                 new LambdaQueryWrapper<AlbumMediumMapping>()
                     .eq(AlbumMediumMapping::getAlbumId, albumId)
             ).stream().map(AlbumMediumMapping::getMediumId).toList();
 
-            // 去重
-            List<Integer> distinctMediumIds = mediumIds.stream()
+            // 去掉已经关联的
+            mediumIds = mediumIds.stream()
                 .filter(mediumId -> !existMediumIds.contains(mediumId)).toList();
-            if (distinctMediumIds.isEmpty()) {
-                continue;
-            }
-
-            // 批量保存
-            for (Integer mediumId : distinctMediumIds) {
+            for (Integer mediumId : mediumIds) {
                 AlbumMediumMapping mapping = new AlbumMediumMapping();
                 mapping.setAlbumId(albumId);
                 mapping.setMediumId(mediumId);
                 albumMediumMappingMapper.insert(mapping);
             }
+            photoService.refreshAlbumCover(album);
         }
-
-        // 移除删除标记
-        if (removeDeletedFlag) {
-            mediumMapper.update(new LambdaUpdateWrapper<Medium>()
-                .in(Medium::getId, mediumIds)
-                .set(Medium::getDeleted, false)
-            );
-        }
-
-        // 查询媒体已关联的相册，取消不在 albumIds 中的关联
-        if (overrideAlbums) {
-            List<Integer> oldAlbumIds = albumMediumMappingMapper.selectList(new LambdaQueryWrapper<AlbumMediumMapping>()
-                .in(AlbumMediumMapping::getMediumId, mediumIds)
-            ).stream().map(AlbumMediumMapping::getAlbumId).toList();
-
-            // 找出取消关联的相册
-            List<Integer> cancelAlbumIds = oldAlbumIds.stream()
-                .filter(albumId -> !albumIds.contains(albumId)).toList();
-
-            // 删除关联关系
-            albumMediumMappingMapper.delete(new LambdaQueryWrapper<AlbumMediumMapping>()
-                .in(AlbumMediumMapping::getAlbumId, cancelAlbumIds)
-                .in(AlbumMediumMapping::getMediumId, mediumIds)
-            );
-        }
-
     }
 
-    /**
-     * 移除照片
-     */
+    @Transactional(rollbackFor = Exception.class)
     public void removeMediumFromAlbum(List<Integer> albumIds, List<Integer> mediumIds) {
         Assert.notEmpty(mediumIds, "请选择照片");
         Assert.notEmpty(albumIds, "请选择相册");
 
-        Integer albumId = albumIds.get(0);
-        Assert.isTrue(getById(albumId) != null, "相册不存在");
-
-        albumMediumMappingMapper.delete(new LambdaQueryWrapper<AlbumMediumMapping>()
-            .eq(AlbumMediumMapping::getAlbumId, albumId)
-            .in(AlbumMediumMapping::getMediumId, mediumIds)
-        );
-    }
-
-    /**
-     * 编辑或创建相册
-     */
-    public void edit(Integer id, String name) {
-        Assert.hasLength(name, "相册名称不能为空");
-
         User currentUser = ThreadLocalUtil.getCurrentUser();
+        for (Integer albumId : albumIds) {
+            Album album = getById(albumId);
+            Assert.notNull(album, "相册不存在");
+            Assert.isTrue(album.getUserId().equals(currentUser.getId()), "无权限操作");
 
-        boolean exist = id != null && getById(id) != null;
-        if (exist) {
-            // 相册名不能重复
-            Assert.isTrue(
-                list().stream().noneMatch(album -> !album.getId().equals(id) && album.getName().equals(name)),
-                "相册名称已存在"
+            albumMediumMappingMapper.delete(new LambdaQueryWrapper<AlbumMediumMapping>()
+                .eq(AlbumMediumMapping::getAlbumId, albumId)
+                .in(AlbumMediumMapping::getMediumId, mediumIds)
             );
-
-            Album album = new Album();
-            album.setId(id);
-            album.setName(name);
-            updateById(album);
-            log.info("编辑相册成功: {}", name);
-
-        } else {
-            Assert.isTrue(
-                list().stream().noneMatch(album -> album.getName().equals(name)),
-                "相册名称已存在"
-            );
-
-            Album album = new Album();
-            album.setUserId(currentUser.getId());
-            album.setName(name);
-            save(album);
-            log.info("创建相册成功: {}", name);
+            photoService.refreshAlbumCover(album);
         }
     }
 
-    /**
-     * 删除相册
-     */
-    public void deleteAlbum(Integer id) {
-        boolean exist = id != null && getById(id) != null;
-        Assert.isTrue(exist, "相册不存在");
+    public void create(CreateAlbumRequest request) {
+        Assert.hasLength(request.getName(), "相册名称不能为空");
+
+        User currentUser = ThreadLocalUtil.getCurrentUser();
+        List<Album> albums = list(new LambdaQueryWrapper<Album>()
+            .eq(Album::getUserId, currentUser.getId())
+        );
+
+        Assert.isTrue(
+            albums.stream().noneMatch(album -> Objects.equals(album.getName(), request.getName())),
+            "相册名称已存在"
+        );
+
+        Album album = new Album();
+        album.setUserId(currentUser.getId());
+        album.setName(request.getName());
+        save(album);
+    }
+
+    public void edit(EditAlbumRequest request) {
+        Integer id = request.getId();
+        Assert.notNull(id, "请选择相册");
+        String name = request.getName();
+        Assert.hasLength(name, "相册名称不能为空");
+
+        User currentUser = ThreadLocalUtil.getCurrentUser();
+        List<Album> albums = list(new LambdaQueryWrapper<Album>()
+            .eq(Album::getUserId, currentUser.getId())
+        );
+        Assert.isTrue(albums.stream().anyMatch(album -> album.getId().equals(id)), "相册不存在");
+
+        Assert.isTrue(
+            albums.stream()
+                .filter(album -> !album.getId().equals(id))
+                .noneMatch(album -> Objects.equals(album.getName(), name)),
+            "相册名称已存在"
+        );
+
+        Album album = new Album();
+        album.setId(id);
+        album.setName(name);
+        updateById(album);
+    }
+
+    public void delete(Integer id) {
+        User currentUser = ThreadLocalUtil.getCurrentUser();
+        Album album = getById(id);
+
+        Assert.notNull(album, "相册不存在");
+        Assert.isTrue(album.getUserId().equals(currentUser.getId()), "您没有权限删除此相册");
 
         removeById(id);
         albumMediumMappingMapper.delete(new LambdaQueryWrapper<AlbumMediumMapping>()

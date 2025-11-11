@@ -62,7 +62,7 @@ public class ExifUtil {
                 }
             } catch (Exception e) {
                 // 忽略设置字段时的异常，继续处理其他字段
-                System.err.println("设置字段值失败: " + field.getName() + ", 原因: " + e.getMessage());
+                log.error("设置字段值失败: {}, 原因: {}", field.getName(), e.getMessage());
             }
         }
 
