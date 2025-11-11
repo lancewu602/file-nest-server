@@ -19,7 +19,7 @@ public class MediumsRow {
     private String title = "";
 
     // N 个图片
-    private List<MediumResp> mediums = Collections.emptyList();
+    private List<MediumInfo> mediums = Collections.emptyList();
 
     public static MediumsRow of(String title) {
         MediumsRow row = new MediumsRow();
@@ -27,7 +27,7 @@ public class MediumsRow {
         return row;
     }
 
-    public static MediumsRow of(List<MediumResp> list) {
+    public static MediumsRow of(List<MediumInfo> list) {
         MediumsRow row = new MediumsRow();
         row.setMediums(list);
         return row;

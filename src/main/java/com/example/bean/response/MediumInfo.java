@@ -9,7 +9,7 @@ import java.util.List;
  * @date 2025/10/31 16:20
  */
 @Data
-public class MediumResp {
+public class MediumInfo {
 
     private Integer id;
     private String type;

@@ -7,7 +7,7 @@ import lombok.Data;
  * @date 2025/11/3 17:01
  */
 @Data
-public class AlbumResp {
+public class AlbumInfo {
 
     private Integer id;
     private String name;

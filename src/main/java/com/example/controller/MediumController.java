@@ -38,11 +38,11 @@ public class MediumController {
      */
     @GetMapping("/api/medium/list")
     public Ret<?> listMediums(
-        @RequestParam(required = false, defaultValue = "1") int pageNum,
-        @RequestParam(required = false, defaultValue = "10") int pageSize
+        @RequestParam String fetchDate,
+        @RequestParam(required = false, defaultValue = "10") int fetchSize
     ) {
         return Ret.success(
-            mediumService.listMediums(null, null, false, pageNum, pageSize)
+            mediumService.listMediums(null, null, false, fetchDate, fetchSize)
         );
     }
 
@@ -52,11 +52,11 @@ public class MediumController {
     @GetMapping("/api/medium/album")
     public Ret<?> listAlbumMediums(
         @RequestParam Integer albumId,
-        @RequestParam(required = false, defaultValue = "1") int pageNum,
-        @RequestParam(required = false, defaultValue = "10") int pageSize
+        @RequestParam String fetchDate,
+        @RequestParam(required = false, defaultValue = "10") int fetchSize
     ) {
         return Ret.success(
-            mediumService.listAlbumMediums(albumId, pageNum, pageSize)
+            mediumService.listAlbumMediums(albumId, fetchDate, fetchSize)
         );
     }
 

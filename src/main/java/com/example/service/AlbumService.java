@@ -10,7 +10,7 @@ import com.example.bean.entity.Medium;
 import com.example.bean.entity.User;
 import com.example.bean.request.CreateAlbumRequest;
 import com.example.bean.request.EditAlbumRequest;
-import com.example.bean.response.AlbumResp;
+import com.example.bean.response.AlbumInfo;
 import com.example.mapper.AlbumMapper;
 import com.example.mapper.AlbumMediumMappingMapper;
 import com.example.mapper.MediumMapper;
@@ -43,16 +43,16 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
     @Autowired
     private PhotoService photoService;
 
-    public List<AlbumResp> listAlbums(Boolean countMedium, boolean excludeSystem) {
+    public List<AlbumInfo> listAlbums(Boolean countMedium, boolean excludeSystem) {
         User currentUser = ThreadLocalUtil.getCurrentUser();
         List<Album> albums = list(new LambdaQueryWrapper<Album>()
             .eq(Album::getUserId, currentUser.getId())
         );
 
-        List<AlbumResp> list = new ArrayList<>();
+        List<AlbumInfo> list = new ArrayList<>();
         if (!excludeSystem) {
             // 最近上传
-            AlbumResp resp = new AlbumResp();
+            AlbumInfo resp = new AlbumInfo();
             resp.setId(Constants.RECENTLY_ALBUM_ID);
             resp.setName(Constants.RECENTLY_ALBUM_NAME);
             if (countMedium) {
@@ -77,7 +77,7 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
             list.add(resp);
 
             // 我的收藏
-            resp = new AlbumResp();
+            resp = new AlbumInfo();
             resp.setId(Constants.FAVORITE_ALBUM_ID);
             resp.setName(Constants.FAVORITE_ALBUM_NAME);
             if (countMedium) {
@@ -104,7 +104,7 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
         }
 
         for (Album album : albums) {
-            AlbumResp resp = new AlbumResp();
+            AlbumInfo resp = new AlbumInfo();
             resp.setId(album.getId());
             resp.setName(album.getName());
 
@@ -128,13 +128,13 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
         return list;
     }
 
-    public AlbumResp albumInfo(Integer albumId, Boolean countMedium) {
+    public AlbumInfo albumInfo(Integer albumId, Boolean countMedium) {
         Assert.isTrue(albumId != null, "相册ID不能为空");
         User currentUser = ThreadLocalUtil.getCurrentUser();
 
         // 最近上传
         if (Objects.equals(albumId, Constants.RECENTLY_ALBUM_ID)) {
-            AlbumResp resp = new AlbumResp();
+            AlbumInfo resp = new AlbumInfo();
             resp.setId(Constants.RECENTLY_ALBUM_ID);
             resp.setName(Constants.RECENTLY_ALBUM_NAME);
             if (countMedium) {
@@ -149,7 +149,7 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
 
         // 我的收藏
         if (Objects.equals(albumId, Constants.FAVORITE_ALBUM_ID)) {
-            AlbumResp resp = new AlbumResp();
+            AlbumInfo resp = new AlbumInfo();
             resp.setId(Constants.FAVORITE_ALBUM_ID);
             resp.setName(Constants.FAVORITE_ALBUM_NAME);
             if (countMedium) {
@@ -165,7 +165,7 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
 
         // 最近删除
         if (Objects.equals(albumId, Constants.DELETED_ALBUM_ID)) {
-            AlbumResp resp = new AlbumResp();
+            AlbumInfo resp = new AlbumInfo();
             resp.setId(Constants.DELETED_ALBUM_ID);
             resp.setName(Constants.DELETED_ALBUM_NAME);
             if (countMedium) {
@@ -182,7 +182,7 @@ public class AlbumService extends ServiceImpl<AlbumMapper, Album> {
         Album album = getById(albumId);
         Assert.notNull(album, "相册不存在");
 
-        AlbumResp resp = new AlbumResp();
+        AlbumInfo resp = new AlbumInfo();
         resp.setId(album.getId());
         resp.setName(album.getName());
 

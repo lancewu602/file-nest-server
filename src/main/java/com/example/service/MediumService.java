@@ -2,7 +2,6 @@ package com.example.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.bean.Constants;
 import com.example.bean.entity.Album;
@@ -13,7 +12,8 @@ import com.example.bean.model.ExifInfo;
 import com.example.bean.request.CheckChunkRequest;
 import com.example.bean.request.DeleteMediumRequest;
 import com.example.bean.request.VideoMergeChunkRequest;
-import com.example.bean.response.MediumResp;
+import com.example.bean.response.MediumInfo;
+import com.example.bean.response.MediumListResp;
 import com.example.bean.response.MergeResultResp;
 import com.example.config.BizException;
 import com.example.mapper.AlbumMapper;
@@ -43,11 +43,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -91,55 +91,59 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
     private static DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    public List<MediumResp> listMediums(
-        List<Integer> mediumIds, Boolean favorite, Boolean deleted, Integer pageNum, Integer pageSize
+    public MediumListResp listMediums(
+        List<Integer> mediumIds, Boolean favorite, Boolean deleted, String fetchDate, Integer fetchSize
     ) {
         User currentUser = ThreadLocalUtil.getCurrentUser();
+        LocalDateTime fetchDateTime = LocalDate.parse(fetchDate, dateFormatter).atStartOfDay();
 
-        Page<Medium> page = Page.of(pageNum, pageSize);
-        List<Medium> list = list(page, new LambdaQueryWrapper<Medium>()
+        List<Medium> list = list(new LambdaQueryWrapper<Medium>()
             .eq(Medium::getUserId, currentUser.getId())
             .in(CollectionUtils.isNotEmpty(mediumIds), Medium::getId, mediumIds)
+            .le(Medium::getDateToken, fetchDateTime)
             .eq(favorite != null, Medium::getFavorite, favorite)
             .eq(Medium::getDeleted, deleted != null && deleted)
             .orderByDesc(Medium::getDateToken)
+            .last("limit " + fetchSize)
         );
 
-        List<MediumResp> mediums = new ArrayList<>();
+        List<MediumInfo> mediums = new ArrayList<>();
         for (Medium medium : list) {
-            MediumResp resp = new MediumResp();
-            resp.setId(medium.getId());
-            resp.setType(medium.getType());
-            resp.setTokenDate(dateFormatter.format(medium.getDateToken()));
-            resp.setTokenDateTime(dateTimeFormatter.format(medium.getDateToken()));
-            resp.setLastModified(dateTimeFormatter.format(medium.getLastModified()));
-            resp.setThumbnailPath(medium.getThumbnailPath());
+            MediumInfo info = new MediumInfo();
+            info.setId(medium.getId());
+            info.setType(medium.getType());
+            info.setTokenDate(dateFormatter.format(medium.getDateToken()));
+            info.setThumbnailPath(medium.getThumbnailPath());
             if (Objects.equals(medium.getType(), "video")) {
-                resp.setDurationText(formatTimeToHMS(medium.getDuration()));
+                info.setDurationText(formatTimeToHMS(medium.getDuration()));
             }
-            mediums.add(resp);
+            mediums.add(info);
         }
 
-        return mediums;
+        String nextFetchDate = fetchDate;
+        if (CollectionUtils.isNotEmpty(list)) {
+            nextFetchDate = list.get(list.size() - 1).getDateToken().format(dateFormatter);
+        }
+        return new MediumListResp(nextFetchDate, mediums);
     }
 
-    public List<MediumResp> listAlbumMediums(Integer albumId, Integer pageNum, Integer pageSize) {
+    public MediumListResp listAlbumMediums(Integer albumId, String fetchDate, Integer fetchSize) {
         Assert.notNull(albumId, "相册ID不能为空");
         User currentUser = ThreadLocalUtil.getCurrentUser();
 
         // 最近上传
         if (Objects.equals(albumId, Constants.RECENTLY_ALBUM_ID)) {
-            return listMediums(null, null, false, pageNum, pageSize);
+            return listMediums(null, null, false, fetchDate, fetchSize);
         }
 
         // 我的收藏
         if (Objects.equals(albumId, Constants.FAVORITE_ALBUM_ID)) {
-            return listMediums(null, true, false, pageNum, pageSize);
+            return listMediums(null, true, false, fetchDate, fetchSize);
         }
 
         // 最近删除
         if (Objects.equals(albumId, Constants.DELETED_ALBUM_ID)) {
-            return listMediums(null, null, true, pageNum, pageSize);
+            return listMediums(null, null, true, fetchDate, fetchSize);
         }
 
         // 自定义相册
@@ -154,18 +158,18 @@ public class MediumService extends ServiceImpl<MediumMapper, Medium> {
 
         // 指定相册查询，但是相册是空的
         if (mediumIds.isEmpty()) {
-            return Collections.emptyList();
+            return null;
         }
 
-        return listMediums(mediumIds, null, false, pageNum, pageSize);
+        return listMediums(mediumIds, null, false, fetchDate, fetchSize);
     }
 
-    public MediumResp mediumInfo(Integer mediumId) {
+    public MediumInfo mediumInfo(Integer mediumId) {
         User currentUser = ThreadLocalUtil.getCurrentUser();
         Medium medium = getById(mediumId);
         Assert.isTrue(medium != null && medium.getUserId().equals(currentUser.getId()), "媒体不存在");
 
-        MediumResp resp = new MediumResp();
+        MediumInfo resp = new MediumInfo();
         resp.setId(medium.getId());
         resp.setType(medium.getType());
         resp.setName(medium.getName());
