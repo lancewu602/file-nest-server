@@ -31,16 +31,16 @@ public class FileController {
     @Autowired
     private LocalStorageService localStorageService;
 
-    @GetMapping("/api/file/children")
-    public Ret<?> listChildren(
+    @GetMapping("/api/file/list")
+    public Ret<?> listFiles(
         @RequestParam Integer storageId,
-        @RequestParam(defaultValue = "") String currentPath,
+        @RequestParam(defaultValue = "") String path,
         @RequestParam(required = false, defaultValue = "false") boolean excludeFile,
         @RequestParam(required = false, defaultValue = "false") boolean excludeHidden,
         @RequestParam(required = false, defaultValue = "false") boolean isTrash
     ) throws IOException {
         return Ret.success(
-            localStorageService.listChildren(storageId, currentPath, excludeFile, excludeHidden, isTrash)
+            localStorageService.listFiles(storageId, path, excludeFile, excludeHidden, isTrash)
         );
     }
 

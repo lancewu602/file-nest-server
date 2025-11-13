@@ -21,6 +21,7 @@ import org.apache.commons.io.file.PathUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,13 +67,13 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
 
     /**
      * 列出存储下的文件信息
-     * @param currentPath 相对应存储的路径，是一个相对路径
+     * @param path 相对应存储的路径，是一个相对路径
      * 获取根目录下的文件列表，传 "",
      * 获取根目录下 abc 目录下的文件列表，传 ”abc“
      * 获取根目录下 abc 目录下 dev 目录下的文件列表，传 ”abc/def“
      */
-    public List<FileInfoResp> listChildren(
-        Integer storageId, String currentPath, boolean excludeFile, boolean excludeHidden, boolean isTrash
+    public List<FileInfoResp> listFiles(
+        Integer storageId, String path, boolean excludeFile, boolean excludeHidden, boolean isTrash
     ) throws IOException {
 
         // 找到路径所属的存储
@@ -87,7 +88,7 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
             mountPath = Paths.get(storage.getMountPath(), storage.getTrashName());
         }
 
-        Path directoryPath = mountPath.resolve(currentPath);
+        Path directoryPath = mountPath.resolve(path);
         if (Files.notExists(directoryPath) || !Files.isDirectory(directoryPath)) {
             return null;
         }
@@ -102,8 +103,11 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
                     .thenComparing(Path::getFileName)
                 )
                 .filter(subPath -> {
-                    // 过滤掉回收站
-                    return !Objects.equals(subPath.getFileName().toString(), storage.getTrashName());
+                    // 过滤掉回收站（在根路径下）
+                    if (StringUtils.isEmpty(path)) {
+                        return !Objects.equals(subPath.getFileName().toString(), storage.getTrashName());
+                    }
+                    return true;
                 })
                 .filter(subPath -> {
                     if (excludeHidden) {
@@ -176,7 +180,7 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
 
         // 获取目录路径
         Path mountPath = Paths.get(storage.getMountPath());
-        Path directoryPath = mountPath.resolve(request.getDirectoryPath());
+        Path directoryPath = mountPath.resolve(request.getPath());
         Path newDirectoryPath = directoryPath.resolve(request.getName());
 
         if (Files.exists(newDirectoryPath)) {
@@ -205,7 +209,7 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
         Assert.isTrue(Files.isDirectory(trashPath), "回收站必须是目录");
 
         // 待删除文件的目录
-        Path directoryPath = mountPath.resolve(request.getDirectoryPath());
+        Path directoryPath = mountPath.resolve(request.getPath());
         for (String fileName : request.getFileNames()) {
             Path filePath = directoryPath.resolve(fileName);
             Path filePathInTrash = trashPath.resolve(fileName);
@@ -303,8 +307,13 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
             return;
         }
 
+        // 限制只能删除回收站中的文件
+        if (!request.getPath().contains(storage.getTrashName())) {
+            return;
+        }
+
         Path mountPath = Paths.get(storage.getMountPath());
-        Path directoryPath = mountPath.resolve(request.getDirectoryPath());
+        Path directoryPath = mountPath.resolve(request.getPath());
         for (String fileName : request.getFileNames()) {
             Path filePath = directoryPath.resolve(fileName);
             if (Files.notExists(filePath)) {

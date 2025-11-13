@@ -10,7 +10,7 @@ import lombok.Data;
 public class CreateDirectoryRequest {
 
     private Integer storageId;
-    private String directoryPath;
+    private String path;
     private String name;
 
 }

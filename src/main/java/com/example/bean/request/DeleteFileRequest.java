@@ -12,7 +12,7 @@ import java.util.List;
 public class DeleteFileRequest {
 
     private Integer storageId;
-    private String directoryPath;
+    private String path;
     private List<String> fileNames;
 
 }
