@@ -86,8 +86,8 @@ public class FileController {
         return Ret.success();
     }
 
-    @PostMapping("/api/file/upload/check")
-    public Ret<?> checkChunks(@RequestBody CheckChunkRequest request) {
+    @PostMapping("/api/file/upload/check-chunks")
+    public Ret<?> checkUploadedChunks(@RequestBody CheckChunkRequest request) {
         return Ret.success(
             localStorageService.checkUploadedChunks(request)
         );
@@ -103,14 +103,14 @@ public class FileController {
         return Ret.success();
     }
 
-    @PostMapping("/api/file/upload/merge")
-    public Ret<?> uploadMerge(@RequestBody FileMergeChunkRequest request) {
+    @PostMapping("/api/file/upload/notify-merge-chunks")
+    public Ret<?> notifyMergeChunks(@RequestBody FileMergeChunkRequest request) {
         localStorageService.notifyMergeChunks(request);
         return Ret.success();
     }
 
-    @PostMapping("/api/file/upload/merge/result")
-    public Ret<?> uploadMergeResult(@RequestBody MergeResultRequest request) {
+    @PostMapping("/api/file/upload/poll-merge-result")
+    public Ret<?> pollMergeResult(@RequestBody MergeResultRequest request) {
         return Ret.success(
             localStorageService.pollMergeResult(request.getFileId())
         );

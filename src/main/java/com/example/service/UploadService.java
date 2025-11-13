@@ -167,7 +167,6 @@ public class UploadService {
 
                     // 更新合并进度
                     double progress = i * 1.0 / chunkPaths.size();
-                    log.info("合并分片中: {}, 进度: {}/{}", progress, i, chunkPaths.size());
                     MERGE_PROGRESS.put(fileId, MergeResultResp.merging(progress));
                 }
                 log.info("合并分片完成. fileId:{}", fileId);
