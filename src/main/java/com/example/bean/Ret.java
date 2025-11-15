@@ -10,12 +10,12 @@ import lombok.Getter;
 public class Ret<T> {
 
     private final int code;
-    private final String error;
+    private final String message;
     private final T data;
 
-    private Ret(int code, String error, T data) {
+    private Ret(int code, String message, T data) {
         this.code = code;
-        this.error = error;
+        this.message = message;
         this.data = data;
     }
 

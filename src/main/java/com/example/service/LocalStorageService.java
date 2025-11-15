@@ -247,7 +247,7 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
         }
 
         Path mountPath = Paths.get(storage.getMountPath());
-        Path directoryPath = mountPath.resolve(request.getDirectoryPath());
+        Path directoryPath = mountPath.resolve(request.getPath());
 
         Path oldFilePath = directoryPath.resolve(request.getOldName());
         Assert.isTrue(Files.exists(oldFilePath), "源文件不存在");
@@ -271,7 +271,7 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
         }
 
         Path mountPath = Paths.get(storage.getMountPath());
-        Path targetDirectoryPath = mountPath.resolve(request.getTargetDirectoryPath());
+        Path targetDirectoryPath = mountPath.resolve(request.getTargetPath());
 
         // 校验
         for (String fileName : request.getFileNames()) {
@@ -280,7 +280,7 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
         }
 
         // 移动
-        Path sourceDirectoryPath = mountPath.resolve(request.getSourceDirectoryPath());
+        Path sourceDirectoryPath = mountPath.resolve(request.getSourcePath());
         for (String fileName : request.getFileNames()) {
             Path sourcePath = sourceDirectoryPath.resolve(fileName);
             if (Files.notExists(sourcePath)) {
@@ -377,7 +377,7 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
 
         // 获取合并之后的目标文件
         Path mountPath = Paths.get(storage.getMountPath());
-        Path directoryPath = mountPath.resolve(request.getDirectoryPath());
+        Path directoryPath = mountPath.resolve(request.getPath());
         Path targetFilePath = directoryPath.resolve(request.getFileName());
 
         FILE_EXECUTOR.submit(() -> {

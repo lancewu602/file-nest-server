@@ -10,7 +10,7 @@ import lombok.Data;
 public class FileMergeChunkRequest {
 
     private String storageId;
-    private String directoryPath;
+    private String path;
 
     private String fileId;
     private String fileName;

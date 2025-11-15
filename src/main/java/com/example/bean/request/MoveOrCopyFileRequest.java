@@ -12,8 +12,8 @@ import java.util.List;
 public class MoveOrCopyFileRequest {
 
     private Integer storageId;
-    private String sourceDirectoryPath;
-    private String targetDirectoryPath;
+    private String sourcePath;
+    private String targetPath;
     private List<String> fileNames;
 
 }
