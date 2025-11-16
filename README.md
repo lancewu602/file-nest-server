@@ -2,12 +2,6 @@
 
 打造 NAS 上好用的文件、照片管理服务。
 
-# 安装
-
-推荐使用 Docker 进行部署。
-
-参考：[docker-compose.yml](docker-compose/docker-compose.yml)
-
 # 支持功能
 
 ## 文件管理

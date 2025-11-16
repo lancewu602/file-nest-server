@@ -11,7 +11,6 @@ import com.example.mapper.UserMapper;
 import com.example.util.JacksonUtil;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
@@ -22,7 +21,6 @@ import org.springframework.util.Assert;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -43,16 +41,6 @@ public class UserService extends ServiceImpl<UserMapper, User> {
     private final Cache<Integer, User> userCache = CacheBuilder.newBuilder()
         .maximumSize(50)
         .build();
-
-    @PostConstruct
-    public void init() {
-        // 缓存所有用户信息
-        List<User> userList = list();
-        for (User user : userList) {
-            userCache.put(user.getId(), user);
-            log.info("cache user：{}", user.getName());
-        }
-    }
 
     /**
      * 登录
