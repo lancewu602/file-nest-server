@@ -14,12 +14,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     @Autowired
-    private LoginInterceptor loginInterceptor;
+    private AuthInterceptor authInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(loginInterceptor)
-            .addPathPatterns("/api/medium/**", "/api/album/**");
+        registry.addInterceptor(authInterceptor)
+            .addPathPatterns(
+                "/api/storage/**",
+                "/api/file/**",
+                "/api/medium/**",
+                "/api/album/**"
+            );
     }
 
     @Override

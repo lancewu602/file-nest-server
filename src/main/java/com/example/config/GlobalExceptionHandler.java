@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(code = HttpStatus.OK)
     public Ret<?> handleException(BizException ex) {
         log.error(ex.getMessage(), ex);
-        return Ret.fail(ex.getMessage());
+        return Ret.fail(ex.getCode(), ex.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

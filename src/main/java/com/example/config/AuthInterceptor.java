@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.util.Assert;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
@@ -17,10 +16,10 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * @date 2025/11/4 11:15
  */
 @Component
-public class LoginInterceptor implements HandlerInterceptor {
+public class AuthInterceptor implements HandlerInterceptor {
 
     // log
-    private static final Logger log = LoggerFactory.getLogger(LoginInterceptor.class);
+    private static final Logger log = LoggerFactory.getLogger(AuthInterceptor.class);
 
     @Autowired
     private UserService userService;
@@ -29,7 +28,9 @@ public class LoginInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String token = request.getHeader("file-nest-token");
         User user = userService.verify(token);
-        Assert.notNull(user, "用户不存在");
+        if (user == null) {
+            throw new BizException(1001, "用户未登录");
+        }
         ThreadLocalUtil.setUser(user);
         return true;
     }
