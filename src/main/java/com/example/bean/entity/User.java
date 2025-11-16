@@ -18,6 +18,6 @@ public class User {
     private String name;
     private String password;
     private Boolean isAdmin;
-    private Boolean enabled;
+    private Boolean enableLogin;
 
 }

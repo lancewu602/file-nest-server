@@ -2,6 +2,7 @@ package com.example.service;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.bean.entity.Storage;
+import com.example.bean.entity.User;
 import com.example.bean.enums.FileType;
 import com.example.bean.request.CheckChunkRequest;
 import com.example.bean.request.ClearTrashRequest;
@@ -15,6 +16,7 @@ import com.example.bean.response.MergeResultResp;
 import com.example.bean.response.UploadCheckResp;
 import com.example.config.BizException;
 import com.example.mapper.StorageMapper;
+import com.example.util.ThreadLocalUtil;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.file.PathUtils;
@@ -75,10 +77,10 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
     public List<FileInfoResp> listFiles(
         Integer storageId, String path, boolean excludeFile, boolean excludeHidden, boolean isTrash
     ) throws IOException {
-
         // 找到路径所属的存储
+        User currentUser = ThreadLocalUtil.getCurrentUser();
         Storage storage = getById(storageId);
-        if (storage == null) {
+        if (storage == null || !Objects.equals(currentUser.getId(), storage.getUserId())) {
             return null;
         }
 
@@ -173,8 +175,9 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
         Assert.hasLength(request.getName(), "目录名称不能为空");
 
         // 获取存储信息
+        User currentUser = ThreadLocalUtil.getCurrentUser();
         Storage storage = getById(request.getStorageId());
-        if (storage == null) {
+        if (storage == null || !Objects.equals(currentUser.getId(), storage.getUserId())) {
             return;
         }
 
@@ -197,8 +200,9 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
         Assert.notNull(request.getStorageId(), "存储id不能为空");
 
         // 获取存储信息
+        User currentUser = ThreadLocalUtil.getCurrentUser();
         Storage storage = getById(request.getStorageId());
-        if (storage == null) {
+        if (storage == null || !Objects.equals(currentUser.getId(), storage.getUserId())) {
             return;
         }
 
@@ -241,8 +245,9 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
         Assert.notNull(request.getStorageId(), "存储id不能为空");
 
         // 获取存储信息
+        User currentUser = ThreadLocalUtil.getCurrentUser();
         Storage storage = getById(request.getStorageId());
-        if (storage == null) {
+        if (storage == null || !Objects.equals(currentUser.getId(), storage.getUserId())) {
             return;
         }
 
@@ -265,8 +270,9 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
         Assert.notNull(request.getStorageId(), "存储id不能为空");
 
         // 获取存储信息
+        User currentUser = ThreadLocalUtil.getCurrentUser();
         Storage storage = getById(request.getStorageId());
-        if (storage == null) {
+        if (storage == null  || !Objects.equals(currentUser.getId(), storage.getUserId())) {
             return;
         }
 
@@ -300,10 +306,11 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
      * 删除文件
      */
     public void deleteFiles(DeleteFileRequest request) throws IOException {
-        // 获取存储信息
         Assert.notNull(request.getStorageId(), "存储id不能为空");
+        // 获取存储信息
+        User currentUser = ThreadLocalUtil.getCurrentUser();
         Storage storage = getById(request.getStorageId());
-        if (storage == null) {
+        if (storage == null || !Objects.equals(currentUser.getId(), storage.getUserId())) {
             return;
         }
 
@@ -324,10 +331,11 @@ public class LocalStorageService extends ServiceImpl<StorageMapper, Storage> {
     }
 
     public void clearTrash(ClearTrashRequest request) throws IOException {
-        // 获取存储信息
         Assert.notNull(request.getStorageId(), "存储id不能为空");
+        // 获取存储信息
+        User currentUser = ThreadLocalUtil.getCurrentUser();
         Storage storage = getById(request.getStorageId());
-        if (storage == null) {
+        if (storage == null || !Objects.equals(currentUser.getId(), storage.getUserId())) {
             return;
         }
 
